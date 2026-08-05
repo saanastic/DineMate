@@ -9,6 +9,8 @@ import {
   CartesianGrid,
 } from "recharts";
 import { motion } from "framer-motion";
+import { useQuery } from "@tanstack/react-query";
+import { getDashboard } from "../services/dashboardService";
 import {
   LayoutDashboard,
   UtensilsCrossed,
@@ -164,6 +166,19 @@ const kitchenQueue = [
   },
 ];
 
+const insightMeta = {
+  forecast: { icon: Flame, badge: 'Forecast', badgeColor: 'bg-amber-500/10 text-amber-400 border-amber-500/20' },
+  inventory: { icon: AlertTriangle, badge: 'Action Required', badgeColor: 'bg-red-500/10 text-red-400 border-red-500/20' },
+  menu: { icon: Sparkles, badge: 'AI Recommendation', badgeColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' },
+};
+
+const normalizeInsights = (items) =>
+  items.map((insight) => {
+    if (insight.icon) return insight;
+    const meta = insightMeta[insight.type] ?? insightMeta.menu;
+    return { ...insight, ...meta };
+  });
+
 const aiInsights = [
   {
     type: "peak",
@@ -217,6 +232,55 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isDarkMode, setIsDarkMode] = useState(true);
 
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['dashboard-summary'],
+    queryFn: getDashboard,
+    staleTime: 1000 * 60 * 3,
+    retry: false,
+  });
+
+  const summary = data?.summary;
+  const trendData = data?.trend ?? chartData;
+  const insights = normalizeInsights(data?.insights ?? aiInsights);
+  const userName = data?.user?.full_name || "Manager";
+
+  const kpiDisplay = summary
+    ? [
+        {
+          title: "Today's Revenue",
+          value: `$${summary.today_revenue.toLocaleString()}`,
+          change: "+7.3%",
+          isPositive: true,
+          icon: TrendingUp,
+          subtext: "from yesterday",
+        },
+        {
+          title: "Today's Orders",
+          value: `${summary.today_orders}`,
+          change: "+9.1%",
+          isPositive: true,
+          icon: ShoppingBag,
+          subtext: "order volume",
+        },
+        {
+          title: "Active Tables",
+          value: `${summary.active_tables} / 24`,
+          change: "75% capacity",
+          isPositive: true,
+          icon: UtensilsCrossed,
+          subtext: "available now",
+        },
+        {
+          title: "Customer Satisfaction",
+          value: `${summary.customer_satisfaction}%`,
+          change: "+2.4%",
+          isPositive: true,
+          icon: Sparkles,
+          subtext: "guest sentiment",
+        },
+      ]
+    : kpiData;
+
   return (
     <div className="min-h-screen bg-[#0B0B0C] text-[#EDEDED] font-sans antialiased flex selection:bg-[#262626] selection:text-white">
       {/* SIDEBAR */}
@@ -243,10 +307,14 @@ export default function Dashboard() {
           >
             <div>
               <h1 className="text-2xl md:text-3xl font-semibold tracking-tight text-white flex items-center gap-2">
-                Welcome back 👋
+                Welcome back, {userName} 👋
               </h1>
               <p className="text-sm text-[#888888] mt-1">
-                Here's what's happening in your restaurant today.
+                {isLoading
+                  ? "Fetching your restaurant insights..."
+                  : isError
+                  ? "Unable to load live dashboard data. Showing cached metrics."
+                  : "Here's what's happening in your restaurant today."}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -264,7 +332,7 @@ export default function Dashboard() {
             animate="visible"
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
           >
-            {kpiData.map((kpi, index) => (
+            {kpiDisplay.map((kpi, index) => (
               <KpiCard key={index} data={kpi} />
             ))}
           </motion.div>
@@ -279,7 +347,7 @@ export default function Dashboard() {
 
             {/* RIGHT COLUMN (1 COL) */}
             <div className="space-y-6">
-              <AiInsightsSection />
+              <AiInsightsSection insights={insights} />
               <KitchenQueueSection />
             </div>
           </div>
@@ -508,7 +576,7 @@ function ChartSection() {
 
       <div className="h-64 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <AreaChart data={trendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id="orderGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="#FFFFFF" stopOpacity={0.25} />
@@ -595,7 +663,7 @@ function RecentOrdersSection() {
   );
 }
 
-function AiInsightsSection() {
+function AiInsightsSection({ insights }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}
@@ -614,7 +682,7 @@ function AiInsightsSection() {
       </div>
 
       <div className="space-y-3">
-        {aiInsights.map((insight, idx) => {
+        {insights.map((insight, idx) => {
           const Icon = insight.icon;
           return (
             <div
