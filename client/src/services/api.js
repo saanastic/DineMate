@@ -110,7 +110,7 @@ const withFallback = async (request, fallbackData) => {
   try {
     const response = await request();
     return response?.data?.data ?? response?.data ?? fallbackData;
-  } catch (error) {
+  } catch {
     return fallbackData;
   }
 };
@@ -159,78 +159,4 @@ export const orderService = {
 
 export default api;
 
-const fallback = {
-  overview: {
-    revenue: 14280,
-    orders: 248,
-    tables: 18,
-    reservations: 32,
-    satisfaction: 96,
-    averageOrderValue: 58,
-    inventoryHealth: 87,
-    kitchenPerformance: 94,
-  },
-  orders: [],
-  tables: [],
-  kitchen: [],
-  inventory: [],
-  customers: [],
-  reservations: [],
-  staff: [],
-  analytics: {},
-  ai: {},
-  notifications: [],
-  profile: {},
-};
-
-const withFallback = async (request, fallbackData) => {
-  try {
-    const response = await request();
-    return response?.data?.data ?? response?.data ?? fallbackData;
-  } catch (error) {
-    return fallbackData;
-  }
-};
-
-export const authService = {
-  login: (payload) => withFallback(() => api.post("/auth/login", payload), { user: { name: "Ava Chen" } }),
-  signup: (payload) => withFallback(() => api.post("/auth/register", payload), { user: { name: payload.name || "Guest" } }),
-  forgotPassword: (email) => withFallback(() => api.post("/auth/forgot-password", { email }), { success: true }),
-  resetPassword: (token, password) => withFallback(() => api.post(`/auth/reset-password/${token}`, { password }), { success: true }),
-};
-
-export const dashboardService = {
-  getOverview: () => withFallback(() => api.get("/dashboard/overview"), fallback.overview),
-  getOrders: () => withFallback(() => api.get("/orders"), fallback.orders),
-  getTables: () => withFallback(() => api.get("/tables"), fallback.tables),
-  getKitchenQueue: () => withFallback(() => api.get("/kitchen"), fallback.kitchen),
-  getInventory: () => withFallback(() => api.get("/inventory"), fallback.inventory),
-  getCustomers: () => withFallback(() => api.get("/customers"), fallback.customers),
-  getReservations: () => withFallback(() => api.get("/reservations"), fallback.reservations),
-  getStaff: () => withFallback(() => api.get("/staff"), fallback.staff),
-  getAnalytics: () => withFallback(() => api.get("/analytics"), fallback.analytics),
-  getReports: () => withFallback(() => api.get("/reports"), fallback.analytics),
-  getBilling: () => withFallback(() => api.get("/billing"), { invoices: [] }),
-  getProfile: () => withFallback(() => api.get("/profile"), fallback.profile),
-  getNotifications: () => withFallback(() => api.get("/notifications"), fallback.notifications),
-  getAiAssistant: () => withFallback(() => api.get("/ai/assistant"), fallback.ai),
-};
-
-export const menuService = {
-  getMenu: () =>
-    withFallback(
-      () => api.get("/menu"),
-      [
-        { id: "m1", name: "Grilled Salmon", price: 18.5, bestseller: true, chef: false, ingredients: ["Salmon", "Lemon", "Herbs"], discount: 0 },
-        { id: "m2", name: "Spicy Ramen", price: 12.0, bestseller: false, chef: true, ingredients: ["Noodles", "Chili", "Pork"], discount: 10 },
-        { id: "m3", name: "Caesar Salad", price: 9.5, bestseller: true, chef: false, ingredients: ["Lettuce", "Croutons", "Parmesan"], discount: 0 },
-        { id: "m4", name: "Chef's Tasting Plate", price: 28.0, bestseller: false, chef: true, ingredients: ["Seasonal"], discount: 15 },
-      ],
-    ),
-};
-
-export const orderService = {
-  placeOrder: (payload) => withFallback(() => api.post("/orders", payload), { success: true, orderId: "stub-ord-123" }),
-  assignWaiter: (orderId, waiter) => withFallback(() => api.post(`/orders/${orderId}/assign-waiter`, { waiter }), { success: true }),
-};
 

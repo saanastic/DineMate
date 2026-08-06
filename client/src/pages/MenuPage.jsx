@@ -5,20 +5,13 @@ import { useAppStore } from "../store/useAppStore";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { menuService, orderService } from "../services/api";
 
-const sampleMenu = [
-  { id: "m1", name: "Grilled Salmon", price: 18.5, bestseller: true, chef: false, ingredients: ["Salmon","Lemon","Herbs"], discount: 0 },
-  { id: "m2", name: "Spicy Ramen", price: 12.0, bestseller: false, chef: true, ingredients: ["Noodles","Chili","Pork"], discount: 10 },
-  { id: "m3", name: "Caesar Salad", price: 9.5, bestseller: true, chef: false, ingredients: ["Lettuce","Croutons","Parmesan"], discount: 0 },
-  { id: "m4", name: "Chef's Tasting Plate", price: 28.0, bestseller: false, chef: true, ingredients: ["Seasonal"], discount: 15 },
-];
-
 export default function MenuPage() {
   const navigate = useNavigate();
   const addToCart = useAppStore((s) => s.addToCart);
   const cart = useAppStore((s) => s.cart);
   const removeFromCart = useAppStore((s) => s.removeFromCart);
   const updateQty = useAppStore((s) => s.updateQty);
-  const assignWaiter = useAppStore((s) => s.assignWaiter);
+  const setAssignedWaiter = useAppStore((s) => s.assignWaiter);
   const assignedWaiter = useAppStore((s) => s.assignedWaiter);
 
   const [selectedWaiter, setSelectedWaiter] = useState(assignedWaiter || "Tom");
@@ -110,17 +103,17 @@ export default function MenuPage() {
 
           <div className="mt-4">
             <label className="text-sm text-white/60">Assign waiter</label>
-            <div className="mt-2 flex gap-2">
+              <div className="mt-2 flex gap-2">
               <select value={selectedWaiter} onChange={(e) => setSelectedWaiter(e.target.value)} className="flex-1 rounded-md bg-white/5 p-2 text-white">
                 {waiters.map((w) => <option key={w} value={w}>{w}</option>)}
               </select>
-              <Button onClick={() => assignWaiter(selectedWaiter)}>Assign</Button>
+              <Button onClick={() => setAssignedWaiter(selectedWaiter)}>Assign</Button>
             </div>
             {assignedWaiter && <div className="mt-2 text-sm text-white/60">Assigned: {assignedWaiter}</div>}
           </div>
 
-          <div className="mt-4">
-            <OrderControls cart={cart} subtotal={subtotal} totalDiscount={totalDiscount} total={total} assignWaiter={assignWaiter} selectedWaiter={selectedWaiter} navigate={navigate} />
+            <div className="mt-4">
+            <OrderControls cart={cart} subtotal={subtotal} totalDiscount={totalDiscount} total={total} assignWaiter={setAssignedWaiter} selectedWaiter={selectedWaiter} navigate={navigate} />
           </div>
         </div>
       </aside>
@@ -144,9 +137,11 @@ function OrderControls({ cart, subtotal, totalDiscount, total, assignWaiter, sel
       <div className="flex items-center justify-between text-sm text-rose-300">Discount <span>-{totalDiscount.toFixed(2)}$</span></div>
       <div className="flex items-center justify-between mt-2 font-semibold text-white">Total <span>{total.toFixed(2)}$</span></div>
 
-      <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex gap-2">
         <Button onClick={() => {
           if (!cart.length) return alert('Cart is empty');
+          // assign waiter to the order in the store if provided
+          assignWaiter?.(selectedWaiter);
           placeOrder.mutate({ items: cart, waiter: selectedWaiter });
           clearCart();
         }} disabled={placeOrder.isLoading}>{placeOrder.isLoading ? 'Placing…' : 'Place order'}</Button>

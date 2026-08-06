@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, BrainCircuit, TrendingUp, Boxes, Users, ArrowRight } from "lucide-react";
+import { Sparkles, TrendingUp, Boxes, Users } from "lucide-react";
 import SectionCard from "../components/SectionCard";
 import Button from "../components/Button";
 import { dashboardService } from "../services/api";

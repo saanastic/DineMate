@@ -10,9 +10,6 @@ import {
   Boxes,
   ChefHat,
   Sparkles,
-  CircleEllipsis,
-  ArrowRight,
-  Clock3,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -20,8 +17,6 @@ import {
   Area,
   BarChart,
   Bar,
-  LineChart,
-  Line,
   PieChart,
   Pie,
   Cell,

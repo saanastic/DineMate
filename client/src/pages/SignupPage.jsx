@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import { useForm } from 'react-hook-form';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate, Link } from 'react-router-dom';
-import { ShieldCheck, Smile } from 'lucide-react';
+import { Smile } from 'lucide-react';
 import { signup } from '../services/authService';
 import AuthLayout from '../layouts/AuthLayout';
 import Button from '../components/ui/Button';

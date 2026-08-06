@@ -3,7 +3,7 @@ import { Bell, Search, Moon, Sun, Sparkles, ChevronDown, Menu } from "lucide-rea
 import { useAppStore } from "../store/useAppStore";
 
 export default function Topbar({ onMenuToggle }) {
-  const { theme, setTheme, activeRestaurant, setActiveRestaurant } = useAppStore();
+  const { theme, setTheme, activeRestaurant } = useAppStore();
 
   return (
     <motion.header

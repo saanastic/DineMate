@@ -1,6 +1,5 @@
 import { motion } from "framer-motion";
 import SectionCard from "../components/SectionCard";
-import Button from "../components/Button";
 
 export default function GenericPage({ title, subtitle, accent = "emerald", items = [], actionLabel = "Review" }) {
   return (

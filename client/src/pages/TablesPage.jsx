@@ -1,8 +1,6 @@
-import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Users, Sparkles, QrCode, MoveRight, Split } from "lucide-react";
+import { Users, QrCode, MoveRight, Split } from "lucide-react";
 import SectionCard from "../components/SectionCard";
-import { dashboardService } from "../services/api";
 
 const seats = [
   { id: 1, title: "Window 1", seats: 2, occupied: true, status: "Dining" },
@@ -12,10 +10,7 @@ const seats = [
 ];
 
 export default function TablesPage() {
-  const [tables, setTables] = useState([]);
-  useEffect(() => {
-    dashboardService.getTables().then(setTables);
-  }, []);
+  // tables are mocked for UI while backend is optional
 
   return (
     <div className="space-y-6">

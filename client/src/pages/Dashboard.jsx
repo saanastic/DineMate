@@ -1,5 +1,4 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -225,17 +224,14 @@ const itemVariants = {
     transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] },
   },
 };
-const navigate = useNavigate();
-const handleLogout = () => {
-  localStorage.removeItem("isLoggedIn");
-  navigate("/");
-};
+// navigate and logout will be used inside the component
 // --- MAIN DASHBOARD COMPONENT ---
 
 export default function Dashboard() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState("Dashboard");
   const [isDarkMode, setIsDarkMode] = useState(true);
+  
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['dashboard-summary'],
@@ -346,7 +342,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* LEFT COLUMN (2 COLS) */}
             <div className="lg:col-span-2 space-y-6">
-              <ChartSection />
+              <ChartSection trendData={trendData} />
               <RecentOrdersSection />
             </div>
 
@@ -365,6 +361,8 @@ export default function Dashboard() {
 // --- SUB-COMPONENTS ---
 
 function Sidebar({ collapsed, setCollapsed, activeTab, setActiveTab }) {
+  // accept logout handler prop if provided (Dashboard passes it)
+  // signature: Sidebar({ collapsed, setCollapsed, activeTab, setActiveTab, onLogout })
   const navItems = [
     { name: "Dashboard", icon: LayoutDashboard },
     { name: "Tables", icon: UtensilsCrossed },
@@ -464,10 +462,10 @@ function Sidebar({ collapsed, setCollapsed, activeTab, setActiveTab }) {
             )}
           </div>
           {!collapsed && (
-            <button className="text-[#888888] hover:text-white p-1 rounded-lg hover:bg-[#1F1F22] transition-colors">
-              <LogOut size={16} />
-            </button>
-          )}
+                <button onClick={() => window?.location && (window.location.href = '/')} className="text-[#888888] hover:text-white p-1 rounded-lg hover:bg-[#1F1F22] transition-colors">
+                  <LogOut size={16} />
+                </button>
+              )}
         </div>
       </div>
     </motion.aside>
@@ -554,7 +552,7 @@ function KpiCard({ data }) {
   );
 }
 
-function ChartSection() {
+function ChartSection({ trendData }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 15 }}

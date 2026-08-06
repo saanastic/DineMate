@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
-import { Bell, ShieldCheck, Sparkles, Palette, Globe2 } from "lucide-react";
+import { ShieldCheck, Palette, Globe2 } from "lucide-react";
 import SectionCard from "../components/SectionCard";
-import Button from "../components/Button";
 
 export default function SettingsPage() {
   return (

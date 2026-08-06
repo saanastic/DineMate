@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Clock3, Flame, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Clock3, Flame } from "lucide-react";
 import SectionCard from "../components/SectionCard";
 import { dashboardService } from "../services/api";
 

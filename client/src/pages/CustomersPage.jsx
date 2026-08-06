@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Users, Sparkles, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import SectionCard from "../components/SectionCard";
 import { dashboardService } from "../services/api";
 
