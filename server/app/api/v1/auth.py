@@ -9,6 +9,8 @@ from app.security.dependencies import require_active_user
 from app.utils.cache import get_redis
 import uuid
 
+router_admin = APIRouter(tags=["admin-auth"])
+
 router = APIRouter()
 
 
@@ -29,6 +31,19 @@ def login(payload: dict = Body(...), db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail='Email and password required')
     user = auth_service.authenticate_user(db, email, password)
     if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid credentials')
+    token = auth_service.create_token(db, user)
+    return token
+
+
+@router_admin.post('/login', response_model=Token)
+def admin_login(payload: dict = Body(...), db: Session = Depends(get_db)):
+    email = payload.get('email')
+    password = payload.get('password')
+    if not email or not password:
+        raise HTTPException(status_code=400, detail='Email and password required')
+    user = auth_service.authenticate_user(db, email, password)
+    if not user or user.role not in {"admin", "manager", "waiter", "chef"}:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Invalid credentials')
     token = auth_service.create_token(db, user)
     return token

@@ -18,6 +18,9 @@ services:
 
   backend:
     build: .
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://dinemate:changeme@db:5432/dinemate
+      - REDIS_URL=redis://redis:6379/0
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./app:/app/app

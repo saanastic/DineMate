@@ -19,6 +19,16 @@ class Settings(BaseSettings):
 
     REDIS_URL: str = "redis://localhost:6379/0"
 
+    TAX_RATE: float = 0.08
+    MENU_CACHE_TTL: int = 300
+
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_WEBHOOK_SECRET: str = ""
+    STRIPE_PUBLISHABLE_KEY: str = ""
+
+    FRONTEND_URL: str = "http://localhost:5173"
+    RESTAURANT_NAME: str = "DineMate"
+
     OPENAI_API_KEY: str = ""
     FAISS_INDEX_PATH: str = "./data/faiss_index"
 
