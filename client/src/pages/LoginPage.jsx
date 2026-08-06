@@ -187,3 +187,4 @@ const LoginPage = () => {
 };
 
 export default LoginPage;
+                </div>

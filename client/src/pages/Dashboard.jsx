@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ResponsiveContainer,
   AreaChart,
@@ -224,7 +225,11 @@ const itemVariants = {
     transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] },
   },
 };
-
+const navigate = useNavigate();
+const handleLogout = () => {
+  localStorage.removeItem("isLoggedIn");
+  navigate("/");
+};
 // --- MAIN DASHBOARD COMPONENT ---
 
 export default function Dashboard() {
