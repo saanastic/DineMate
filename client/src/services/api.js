@@ -1,10 +1,27 @@
 import axios from "axios";
 import useAuthStore from "../store/useAuthStore";
 
-const API_BASE_URL =
+const rawApiBaseUrl =
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_URL ||
-  "http://localhost:8000/api/v1";
+  "";
+
+const normalizeApiBaseUrl = (rawUrl) => {
+  const url = (rawUrl || "").replace(/\/+$|\s+/g, "");
+  if (!url) return "/api/v1";
+  if (url.startsWith("/")) {
+    if (url.endsWith("/api")) return `${url}/v1`;
+    return url.endsWith("/api/v1") ? url : `${url}/api/v1`;
+  }
+  if (/^https?:\/\//.test(url)) {
+    if (url.endsWith("/api/v1")) return url;
+    if (url.endsWith("/api")) return `${url}/v1`;
+    return url.includes("/api/v1") ? url : `${url}/api/v1`;
+  }
+  return "/api/v1";
+};
+
+const API_BASE_URL = normalizeApiBaseUrl(rawApiBaseUrl);
 
 const api = axios.create({
   baseURL: API_BASE_URL,
