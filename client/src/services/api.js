@@ -568,7 +568,7 @@ export const orderService = {
       console.log("Order response:", response.data);
 
       return response?.data?.data ?? response?.data;
-    } catch (e) {
+    } catch {
       console.warn(
         "Backend unavailable, creating demo order",
         e
@@ -586,7 +586,7 @@ export const orderService = {
       );
 
       return response?.data?.data ?? response?.data;
-    } catch (e) {
+    } catch{
       const orders = loadDemoOrders();
 
       const idx = orders.findIndex(
