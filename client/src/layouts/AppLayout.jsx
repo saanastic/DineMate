@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import Topbar from "../components/Topbar";
+import AiFloating from "../components/AiFloating";
 
 export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
@@ -20,6 +21,7 @@ export default function AppLayout() {
             <Outlet />
           </main>
         </div>
+        <AiFloating />
       </div>
     </div>
   );

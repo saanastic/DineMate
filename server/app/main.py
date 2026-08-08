@@ -3,10 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.v1.auth import router as auth_router, router_admin as admin_auth_router
 from app.api.v1.dashboard import router as dashboard_router
+from app.api.v1.kitchen import router as kitchen_router
 from app.api.v1.tables import router as tables_router
 from app.api.v1.menu_public import router as menu_router
 from app.api.v1.orders_public import router as orders_router
 from app.api.v1.admin_dining import router as admin_router
+from app.api.v1.billing import router as billing_router
 from app.api.v1.assistant import router as assistant_router
 from app.api.v1.ws import router as ws_router
 from app.services import order_service
@@ -28,10 +30,12 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(admin_auth_router, prefix="/api/v1/admin", tags=["admin-auth"])
 app.include_router(dashboard_router, prefix="/api/v1/dashboard", tags=["dashboard"])
+app.include_router(kitchen_router, prefix="/api/v1/kitchen", tags=["kitchen"])
 app.include_router(tables_router, prefix="/api/v1/tables", tags=["tables"])
 app.include_router(menu_router, prefix="/api/v1/menu", tags=["menu"])
 app.include_router(orders_router, prefix="/api/v1/orders", tags=["orders"])
 app.include_router(admin_router, prefix="/api/v1/admin", tags=["admin"])
+app.include_router(billing_router, prefix="/api/v1/billing", tags=["billing"])
 app.include_router(assistant_router, prefix="/api/v1/assistant", tags=["assistant"])
 app.include_router(ws_router, prefix="/api/v1/ws", tags=["websocket"])
 

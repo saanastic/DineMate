@@ -29,7 +29,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/orders" element={<OrdersPage />} />
           <Route path="/tables" element={<TablesPage />} />
-          <Route path="/kitchen" element={<ProtectedRoute roles={["chef","waiter"]}><KitchenPage /></ProtectedRoute>} />
+          <Route path="/kitchen" element={<ProtectedRoute roles={["chef","waiter","manager","admin"]}><KitchenPage /></ProtectedRoute>} />
           <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/customers" element={<CustomersPage />} />
           <Route path="/ai" element={<AiPage />} />

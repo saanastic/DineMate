@@ -4,6 +4,7 @@ import Button from "../components/Button";
 import { useAppStore } from "../store/useAppStore";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { menuService, orderService } from "../services/api";
+import { formatCurrency } from "../utils/formatters";
 
 export default function MenuPage() {
   const navigate = useNavigate();
@@ -128,7 +129,7 @@ export default function MenuPage() {
 
                   <div className="text-right">
                     <div className="text-sm text-white/60">
-                      {Number(dish.price || 0).toFixed(2)}$
+                      {formatCurrency(Number(dish.price || 0))}
                     </div>
 
                     <div className="mt-3">
@@ -149,7 +150,7 @@ export default function MenuPage() {
               {bestSellers.length > 0 ? (
                 bestSellers.map((item) => (
                   <li key={item.id || item._id}>
-                    {item.name} — {Number(item.price || 0).toFixed(2)}$
+                    {item.name} — {formatCurrency(Number(item.price || 0))}
                   </li>
                 ))
               ) : (
@@ -165,7 +166,7 @@ export default function MenuPage() {
               {chefPicks.length > 0 ? (
                 chefPicks.map((item) => (
                   <li key={item.id || item._id}>
-                    {item.name} — {Number(item.price || 0).toFixed(2)}$
+                    {item.name} — {formatCurrency(Number(item.price || 0))}
                   </li>
                 ))
               ) : (
@@ -189,7 +190,7 @@ export default function MenuPage() {
                 <div>
                   <div className="font-medium text-white">{item.name}</div>
                   <div className="text-sm text-white/60">
-                    {Number(item.price || 0).toFixed(2)}$ × {item.qty}
+                    {formatCurrency(Number(item.price || 0))} × {item.qty}
                   </div>
                 </div>
 
@@ -221,17 +222,17 @@ export default function MenuPage() {
         <div className="mt-4 border-t border-white/10 pt-3">
           <div className="flex items-center justify-between text-sm text-white/60">
             <span>Subtotal</span>
-            <span>{subtotal.toFixed(2)}$</span>
+            <span>{formatCurrency(subtotal)}</span>
           </div>
 
           <div className="flex items-center justify-between text-sm text-rose-300">
             <span>Discount</span>
-            <span>-{totalDiscount.toFixed(2)}$</span>
+            <span>-{formatCurrency(totalDiscount)}</span>
           </div>
 
           <div className="mt-2 flex items-center justify-between font-semibold text-white">
             <span>Total</span>
-            <span>{total.toFixed(2)}$</span>
+            <span>{formatCurrency(total)}</span>
           </div>
 
           <div className="mt-4">

@@ -36,6 +36,7 @@ export const useAppStore = create(
         theme: state.theme,
         activeRestaurant: state.activeRestaurant,
         user: state.user,
+        token: state.token,
         isAuthenticated: state.isAuthenticated,
       }),
     },

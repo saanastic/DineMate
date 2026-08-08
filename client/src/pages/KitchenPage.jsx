@@ -1,20 +1,57 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
-import { Clock3, Flame } from "lucide-react";
+import { Clock3, Flame, Check, Play, AlertTriangle, Star } from "lucide-react";
 import SectionCard from "../components/SectionCard";
-import { dashboardService } from "../services/api";
+import { dashboardService, orderService } from "../services/api";
+import { formatCurrency } from "../utils/formatters";
 
 const columns = [
-  { id: "prep", title: "In Prep", accent: "amber" },
-  { id: "ready", title: "Ready", accent: "emerald" },
-  { id: "served", title: "Served", accent: "blue" },
+  { id: "new", title: "New Orders", statuses: ["placed", "confirmed"], accent: "amber" },
+  { id: "preparing", title: "Preparing", statuses: ["preparing"], accent: "orange" },
+  { id: "ready", title: "Ready", statuses: ["ready"], accent: "emerald" },
+  { id: "served", title: "Completed", statuses: ["served", "closed"], accent: "blue" },
+  { id: "cancelled", title: "Cancelled", statuses: ["cancelled"], accent: "slate" },
 ];
 
 export default function KitchenPage() {
   const [queue, setQueue] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [priorityMap, setPriorityMap] = useState({});
+  const pollRef = useRef(null);
+
+  const fetchQueue = async () => {
+    setLoading(true);
+    try {
+      const data = await dashboardService.getKitchenQueue();
+      // backend returns array of orders
+      setQueue(Array.isArray(data) ? data : data?.items || []);
+    } catch (e) {
+      console.error("Failed to load kitchen queue:", e);
+      setQueue([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    dashboardService.getKitchenQueue().then(setQueue);
+    fetchQueue();
+    pollRef.current = setInterval(fetchQueue, 5000);
+    return () => clearInterval(pollRef.current);
   }, []);
+
+  const togglePriority = (id) => {
+    setPriorityMap((s) => ({ ...s, [id]: !s[id] }));
+  };
+
+  const changeStatus = async (orderId, status) => {
+    try {
+      await orderService.updateStatus(orderId, status);
+      await fetchQueue();
+    } catch (e) {
+      console.error("Failed to update status", e);
+      // optimistic UI could be added
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -24,23 +61,45 @@ export default function KitchenPage() {
         <p className="mt-2 text-sm text-white/60">An elegant Kanban flow for priority orders, prep timers, and overdue risk.</p>
       </motion.div>
 
-      <div className="grid gap-4 xl:grid-cols-3">
+      <div className="grid gap-4 xl:grid-cols-5">
         {columns.map((column) => (
-          <SectionCard key={column.id} title={column.title} subtitle="Animated queue state">
+          <SectionCard key={column.id} title={column.title} subtitle="Live kitchen column">
             <div className="space-y-3">
-              {queue.length ? queue.map((item, index) => (
-                <motion.div layout key={item.id || index} className="rounded-[22px] border border-white/10 bg-white/5 p-4">
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-white">{item.table || "Table"}</p>
-                    <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-300">{item.status || "Prep"}</span>
-                  </div>
-                  <p className="mt-2 text-sm text-white/60">{Array.isArray(item.items) ? item.items.join(" • ") : item.summary || "Priority dishes"}</p>
-                  <div className="mt-3 flex items-center justify-between text-sm text-white/45">
-                    <span className="flex items-center gap-2"><Clock3 size={14} /> {item.time || "Active"}</span>
-                    <span className="flex items-center gap-2"><Flame size={14} className="text-amber-400" /> {item.chef || "Chef"}</span>
-                  </div>
-                </motion.div>
-              )) : <div className="rounded-[20px] border border-dashed border-white/10 p-6 text-center text-sm text-white/55">Queue is quiet right now.</div>}
+              {!loading && queue.length ? (
+                queue
+                  .filter((o) => column.statuses.includes(o.status))
+                  .map((item) => (
+                    <motion.div layout key={item.id} className="rounded-[22px] border border-white/10 bg-white/5 p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-semibold text-white">{item.table_label || `Table ${item.table_id || "-"}`}</p>
+                          <p className="mt-1 text-sm text-white/60">{item.items?.map((it) => `${it.quantity}x ${it.item_name}`).join(" • ")}</p>
+                        </div>
+                        <div className="text-right">
+                          <div className="inline-flex items-center gap-2">
+                            <span className="text-sm text-white/60">{item.created_at ? new Date(item.created_at).toLocaleTimeString() : "-"}</span>
+                          </div>
+                          <div className="mt-2 text-sm text-white/75">{formatCurrency(parseFloat(item.total || 0))}</div>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => togglePriority(item.id)} className="rounded px-2 py-1 bg-white/5 text-xs text-white/80">{priorityMap[item.id] ? <Star size={14} className="text-amber-300" /> : <Star size={14} />}</button>
+                          <span className="text-sm text-white/50">{item.payment_status ? item.payment_status : ""}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {column.id === "new" && <button onClick={() => changeStatus(item.id, "preparing")} className="rounded bg-amber-600 px-3 py-1 text-sm text-white">Start Prep</button>}
+                          {column.id === "preparing" && <button onClick={() => changeStatus(item.id, "ready")} className="rounded bg-emerald-600 px-3 py-1 text-sm text-white">Mark Ready</button>}
+                          {column.id === "ready" && <button onClick={() => changeStatus(item.id, "served")} className="rounded bg-blue-600 px-3 py-1 text-sm text-white">Mark Served</button>}
+                          {column.id !== "served" && <button onClick={() => changeStatus(item.id, "cancelled")} className="rounded bg-red-600 px-2 py-1 text-sm text-white">Cancel</button>}
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))
+              ) : (
+                <div className="rounded-[20px] border border-dashed border-white/10 p-6 text-center text-sm text-white/55">{loading ? "Loading…" : "No orders in this column"}</div>
+              )}
             </div>
           </SectionCard>
         ))}

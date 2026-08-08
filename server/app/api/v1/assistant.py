@@ -3,13 +3,18 @@ import time
 from collections import defaultdict
 from typing import Any
 
-from anthropic import Anthropic
+import httpx
+try:
+    from anthropic import Anthropic
+except Exception:
+    Anthropic = None
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
-from app.services import menu_service
+from app.services import menu_service, order_service
 from app.utils.cache import get_redis
 from app.utils.menu_cache import MENU_CACHE_KEY
 
@@ -17,7 +22,7 @@ router = APIRouter()
 
 MAX_CONVERSATION_TURNS = 6
 MAX_INPUT_LENGTH = 220
-MAX_TOKENS = 120
+MAX_TOKENS = 400
 RATE_LIMIT_WINDOW_SECONDS = 60
 RATE_LIMIT_MAX_MESSAGES = 8
 
@@ -30,7 +35,7 @@ class AssistantChatInput(BaseModel):
 
 class AssistantChatOutput(BaseModel):
     reply: str
-    usedFallback: bool
+    usedFallback: bool = False
 
 
 _rate_limit_store: dict[str, list[float]] = defaultdict(list)
@@ -43,28 +48,35 @@ def _build_menu_context(db: Session) -> str:
         available_items = [item for item in category.get("items", []) if item.get("is_available")]
         if not available_items:
             continue
-        lines.append(f"{category['name']}:")
+        lines.append(f"{category.get('name', 'Category')}:")
         for item in available_items:
-            parts = [item["name"], f"${item['price']}"]
-            if item.get("description"):
-                description = str(item["description"]).strip()
-                if len(description) > 90:
-                    description = description[:87] + "..."
-                parts.append(description)
-            if item.get("allergens"):
-                parts.append("allergens: " + ", ".join(item["allergens"]))
-            lines.append("- " + " | ".join(parts))
+            price = item.get("price")
+            # price may be string in DB
+            lines.append(f"- {item.get('name')} — ₹{price} — {item.get('description','')}")
     return "\n".join(lines)
 
 
 def _get_cached_context(db: Session) -> str:
-    cache = get_redis()
-    cached = cache.get("assistant:menu-context")
-    if cached:
-        return cached
-    context = _build_menu_context(db)
-    cache.setex("assistant:menu-context", 120, context)
-    return context
+    try:
+        redis = get_redis()
+    except Exception:
+        redis = None
+
+    if redis:
+        cached = redis.get(MENU_CACHE_KEY)
+        if cached:
+            try:
+                return cached.decode("utf-8")
+            except Exception:
+                pass
+
+    ctx = _build_menu_context(db)
+    if redis:
+        try:
+            redis.set(MENU_CACHE_KEY, ctx, ex=60 * 5)
+        except Exception:
+            pass
+    return ctx
 
 
 def _check_rate_limit(key: str) -> bool:
@@ -84,7 +96,7 @@ def chat(payload: AssistantChatInput, db: Session = Depends(get_db)):
 
     session_key = f"table:{payload.tableId or 0}"
     if not _check_rate_limit(session_key):
-        return AssistantChatOutput(reply="I’m taking a short pause so the assistant stays responsive. Please try again in a moment.", usedFallback=True)
+        return AssistantChatOutput(reply="Rate limit: try again shortly.", usedFallback=True)
 
     context = _get_cached_context(db)
     history = (payload.conversationHistory or [])[-MAX_CONVERSATION_TURNS:]
@@ -96,29 +108,87 @@ def chat(payload: AssistantChatInput, db: Session = Depends(get_db)):
             history_text += f"{role}: {content}\n"
 
     system_prompt = (
-        "You are a friendly menu assistant for this restaurant. "
-        "Only recommend or describe items from the menu list provided below — never invent dishes, prices, or ingredients. "
-        "If asked about something not on the menu, say it isn't available. Keep answers to 2–3 short sentences.\n\n"
-        f"Menu context:\n{context or 'No items available.'}"
+        "You are a helpful restaurant assistant. Answer concisely and only about items present in the provided menu context. "
+        "If asked about unavailable items, say so. Keep replies short and neutral.\n\n"
+        f"Menu context:\n{context or 'No menu items available.'}"
     )
 
     user_prompt = f"Conversation history:\n{history_text}\nUser: {payload.message.strip()}"
 
-    api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
-    if not api_key:
-        return AssistantChatOutput(reply="The assistant is temporarily unavailable. Please ask us directly for menu guidance.", usedFallback=True)
+    # Try OpenAI Chat Completions
+    openai_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if openai_key:
+        try:
+            headers = {"Authorization": f"Bearer {openai_key}", "Content-Type": "application/json"}
+            body = {
+                "model": os.getenv("OPENAI_MODEL", "gpt-4o-mini") if os.getenv("OPENAI_MODEL") else "gpt-3.5-turbo",
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+                "max_tokens": MAX_TOKENS,
+                "temperature": 0.2,
+            }
+            r = httpx.post("https://api.openai.com/v1/chat/completions", json=body, headers=headers, timeout=15)
+            r.raise_for_status()
+            data = r.json()
+            reply = data.get("choices", [])[0].get("message", {}).get("content", "").strip()
+            if reply:
+                return AssistantChatOutput(reply=reply, usedFallback=False)
+        except Exception:
+            pass
 
+    # Try Anthropic if available
+    anthropic_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+    if anthropic_key and Anthropic is not None:
+        try:
+            client = Anthropic(api_key=anthropic_key)
+            response = client.messages.create(
+                model=os.getenv("ANTHROPIC_MODEL", "claude-2.1"),
+                max_tokens=MAX_TOKENS,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_prompt}],
+            )
+            # extract text
+            reply = ""
+            if hasattr(response, "content"):
+                for block in getattr(response, "content", []):
+                    if getattr(block, "type", None) == "text":
+                        reply += block.text
+            if not reply:
+                reply = str(response)
+            return AssistantChatOutput(reply=reply.strip(), usedFallback=False)
+        except Exception:
+            pass
+
+    # Local fallback: derive from analytics and menu
     try:
-        client = Anthropic(api_key=api_key)
-        response = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=MAX_TOKENS,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_prompt}],
-        )
-        reply = "".join(block.text for block in response.content if getattr(block, "type", None) == "text")
-        if not reply.strip():
-            raise RuntimeError("empty response")
-        return AssistantChatOutput(reply=reply.strip(), usedFallback=False)
+        analytics = None
+        try:
+            analytics = order_service.get_analytics_summary(db)
+        except Exception:
+            analytics = None
+
+        q = payload.message.strip().lower()
+        if "sales" in q or "revenue" in q:
+            if analytics:
+                rev = analytics.get("today_revenue") or analytics.get("today_revenue", 0)
+                orders = analytics.get("today_orders", 0)
+                return AssistantChatOutput(reply=f"Demo: Today's revenue ₹{rev} across {orders} orders.", usedFallback=True)
+            return AssistantChatOutput(reply="No sales data available in demo mode.", usedFallback=True)
+
+        if "top" in q or "popular" in q or "best" in q:
+            if analytics and analytics.get("top_items"):
+                tops = analytics.get("top_items")
+                text = ", ".join([f"{t['name']} ({t['quantity']})" for t in tops[:5]])
+                return AssistantChatOutput(reply=f"Top demo items: {text}", usedFallback=True)
+            return AssistantChatOutput(reply="No top-items data in demo.", usedFallback=True)
+
+        if "menu" in q or "dish" in q:
+            sample = (context or "").split("\n")[:6]
+            return AssistantChatOutput(reply="Menu snapshot:\n" + "\n".join(sample), usedFallback=True)
+
+        # generic helpful fallback
+        return AssistantChatOutput(reply="The assistant is offline; ask about menu items, sales, or top dishes.", usedFallback=True)
     except Exception:
-        return AssistantChatOutput(reply="I can help with the menu right now, but I’m unable to access the assistant service. Please ask about the items currently listed on the menu.", usedFallback=True)
+        return AssistantChatOutput(reply="The assistant is temporarily unavailable.", usedFallback=True)
