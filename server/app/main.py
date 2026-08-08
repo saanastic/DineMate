@@ -4,10 +4,12 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
+
 from app.api.v1.auth import (
     router as auth_router,
     router_admin as admin_auth_router,
 )
+
 from app.api.v1.dashboard import router as dashboard_router
 from app.api.v1.kitchen import router as kitchen_router
 from app.api.v1.tables import router as tables_router
@@ -24,28 +26,37 @@ from app.database.session import SessionLocal
 
 logger = logging.getLogger(__name__)
 
+
 app = FastAPI(
     title="DineMate AI Backend",
     version="0.2.0",
 )
 
 
-# --------------------------------------------------
+# ==================================================
 # CORS
-# --------------------------------------------------
+# ==================================================
+
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.BACKEND_CORS_ORIGINS,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 
-# --------------------------------------------------
+# ==================================================
 # API ROUTES
-# --------------------------------------------------
+# ==================================================
 
 app.include_router(
     auth_router,
@@ -114,18 +125,24 @@ app.include_router(
 )
 
 
-# --------------------------------------------------
+# ==================================================
 # STRIPE WEBHOOK
-# --------------------------------------------------
+# ==================================================
 
 @app.post("/api/v1/webhooks/stripe")
 async def stripe_webhook_root(request: Request):
+
     payload = await request.body()
-    sig = request.headers.get("stripe-signature", "")
+
+    sig = request.headers.get(
+        "stripe-signature",
+        ""
+    )
 
     db = SessionLocal()
 
     try:
+
         if not order_service.handle_stripe_webhook(
             db,
             payload,
@@ -136,40 +153,58 @@ async def stripe_webhook_root(request: Request):
                 detail="Webhook error",
             )
 
-        return {"received": True}
+        return {
+            "received": True
+        }
 
     finally:
         db.close()
 
 
-# --------------------------------------------------
-# ROOT / HEALTH CHECK
-# --------------------------------------------------
+# ==================================================
+# ROOT
+# ==================================================
 
 @app.get("/")
 def root():
+
     return {
         "message": "Welcome to DineMate AI backend",
         "status": "online",
     }
 
 
+# ==================================================
+# HEALTH CHECK
+# ==================================================
+
 @app.get("/health")
 def health():
+
     return {
-        "status": "healthy",
+        "status": "healthy"
     }
 
 
-# --------------------------------------------------
-# STARTUP / SHUTDOWN
-# --------------------------------------------------
+# ==================================================
+# STARTUP
+# ==================================================
 
 @app.on_event("startup")
 async def on_startup():
-    logger.info("Starting DineMate AI backend...")
 
+    logger.info(
+        "Starting DineMate AI backend..."
+    )
+
+
+# ==================================================
+# SHUTDOWN
+# ==================================================
 
 @app.on_event("shutdown")
 async def on_shutdown():
-    logger.info("Shutting down DineMate AI backend...")
+
+    logger.info(
+        "Shutting down DineMate AI backend..."
+    )
